@@ -5,13 +5,14 @@ import 'package:ez_portfolio/widgets/socials.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 const String intro =
     '''I am a mobile application developer with over 5 years of experience. I started as a native android app developer with JAVA and Kotlin, later I also worked with react-native for cross-platform development. I switched to flutter when flutter started picking the buzz and have been solely focused on flutter for cross-platform mobile application development for iOS and android platforms since early 2019.\n 
 ''';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -52,30 +53,77 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({
     super.key,
   });
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends ConsumerState<MyHomePage>
+    with TickerProviderStateMixin {
+  final homeTitleOpacityNotifier = ValueNotifier(0.0);
+  late final AnimationController _controller = AnimationController(
+    duration: const Duration(seconds: 3),
+    vsync: this,
+  );
+  late final Animation<double> _animation = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeIn,
+  );
+
+  late final AnimationController _paintController = AnimationController(
+    duration: const Duration(seconds: 2),
+    vsync: this,
+  )..forward();
+
+  late final Animation<double> _paintAnimation = CurvedAnimation(
+    parent: _paintController,
+    curve: Curves.fastOutSlowIn,
+  );
+
+  late final Animation<Offset> _offsetAnimation = Tween<Offset>(
+    begin: const Offset(50.0, 100.0),
+    end: const Offset(0.0, 0.0),
+  ).animate(CurvedAnimation(
+    parent: _controller,
+    curve: Curves.fastLinearToSlowEaseIn,
+  ));
+
+  @override
+  void initState() {
+    super.initState();
+    _startTitleAnimation();
+  }
+
+  void _startTitleAnimation() {
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      homeTitleOpacityNotifier.value = 1.0;
+      _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _paintController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     return Scaffold(
+      backgroundColor: Colors.grey[200],
       appBar: AppBar(
-        // backgroundColor: Colors.amber,
+        backgroundColor: Colors.grey[200],
         toolbarHeight: 45,
         flexibleSpace: const HeaderWidget(),
       ),
       body: Row(
         children: [
-          const SizedBox(
-            width: 50,
-          ),
           const Socials(),
           Expanded(
             child: Stack(
@@ -85,18 +133,28 @@ class _MyHomePageState extends State<MyHomePage> {
                   child: SizedBox(
                     width: screenSize.width / 2,
                     height: screenSize.width / 3,
-                    child: CustomPaint(
-                      painter: RPSCustomPainter(),
-                      child: Center(
-                        child: Container(
-                          margin: const EdgeInsets.only(
-                            right: 100,
-                            top: 50,
-                          ),
-                          width: screenSize.width / 2,
-                          height: screenSize.width / 3,
-                          child: Image.asset(
-                            'assets/images/worker.png',
+                    child: RotationTransition(
+                      turns: _paintAnimation,
+                      child: CustomPaint(
+                        isComplex: true,
+                        painter: RPSCustomPainter(),
+                        child: Center(
+                          child: SlideTransition(
+                            position: _offsetAnimation,
+                            child: Container(
+                              margin: const EdgeInsets.only(
+                                right: 100,
+                                top: 50,
+                              ),
+                              width: screenSize.width / 2,
+                              height: screenSize.width / 3,
+                              child: ScaleTransition(
+                                scale: _animation,
+                                child: Image.asset(
+                                  'assets/images/worker.png',
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -105,103 +163,126 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 Positioned(
                   top: screenSize.height / 2.80,
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 175,
-                      ),
-                      RichText(
-                        text: const TextSpan(
-                          text: 'Crafting excellence\n',
-                          style: TextStyle(
-                            color: Color(0xff333333),
-                            fontSize: 72,
-                            fontWeight: FontWeight.w900,
-                            height: 1.15,
-                          ),
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: homeTitleOpacityNotifier,
+                    builder: ((context, value, child) {
+                      return AnimatedOpacity(
+                        opacity: value,
+                        duration: const Duration(
+                          milliseconds: 500,
+                        ),
+                        child: Row(
                           children: [
-                            TextSpan(
-                              text: 'with my machine from\n',
-                              style: TextStyle(
-                                color: Color(0xff333333),
-                                fontSize: 72,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.90,
-                                height: 1.15,
-                              ),
+                            const SizedBox(
+                              width: 175,
                             ),
-                            TextSpan(
-                              text: 'home station.',
-                              style: TextStyle(
-                                color: Color(0xff333333),
-                                fontSize: 72,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.90,
-                                height: 1.15,
+                            RichText(
+                              text: const TextSpan(
+                                text: 'Crafting excellence\n',
+                                style: TextStyle(
+                                  color: Color(0xff333333),
+                                  fontSize: 72,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.15,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'with my machine from\n',
+                                    style: TextStyle(
+                                      color: Color(0xff333333),
+                                      fontSize: 72,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.90,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: 'home station.',
+                                    style: TextStyle(
+                                      color: Color(0xff333333),
+                                      fontSize: 72,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.90,
+                                      height: 1.15,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      );
+                    }),
                   ),
                 ),
                 Positioned(
                   top: screenSize.width / 3 + 30,
                   left: (screenSize.width / 2) - 100,
                   right: 100,
-                  child: Column(
-                    children: [
-                      Align(
-                        alignment: Alignment.topLeft,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints.expand(
-                            height: screenSize.height / 8,
-                            width: screenSize.width,
+                  child: ValueListenableBuilder<double>(
+                      valueListenable: homeTitleOpacityNotifier,
+                      builder: (context, value, child) {
+                        return AnimatedOpacity(
+                          duration: const Duration(
+                            milliseconds: 2000,
                           ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Flexible(
-                                child: Text(
-                                  intro,
-                                  softWrap: true,
-                                  textAlign: ui.TextAlign.justify,
-                                  style: TextStyle(
-                                    color: Color(0xff333333),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                    height: 1.15,
+                          opacity: value,
+                          child: Column(
+                            children: [
+                              Align(
+                                alignment: Alignment.topLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints.expand(
+                                    height: screenSize.height / 8,
+                                    width: screenSize.width,
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: const [
+                                      Flexible(
+                                        child: Text(
+                                          intro,
+                                          softWrap: true,
+                                          textAlign: ui.TextAlign.justify,
+                                          style: TextStyle(
+                                            color: Color(0xff333333),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w400,
+                                            height: 1.15,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
+                              Row(
+                                children: [
+                                  RichText(
+                                    text: const TextSpan(
+                                      text:
+                                          'Let\'s look into some of my works.',
+                                      style: TextStyle(
+                                        color: Color(0xff333333),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.15,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    width: 20,
+                                  ),
+                                  const FaIcon(
+                                    FontAwesomeIcons.circleArrowRight,
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          RichText(
-                            text: const TextSpan(
-                              text: 'Let\'s look into some of my works.',
-                              style: TextStyle(
-                                color: Color(0xff333333),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                height: 1.15,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(
-                            width: 20,
-                          ),
-                          const FaIcon(
-                            FontAwesomeIcons.circleArrowRight,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        );
+                      }),
                 ),
               ],
             ),
